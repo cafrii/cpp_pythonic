@@ -12,8 +12,8 @@
 
 ## namespace
 - 별도의 특별한 이유가 없는 한 모든 코드는 동일한 하나의 네임스페이스로 감싸서 작성한다.
-- 이 라이브러리의 namespace: "pycp"
-  - 리포지토리의 이름 "cpp_pythonic"에서 유래한 py-cpp를 축약하여 조합한 단어.
+- 이 라이브러리의 namespace: "com::cafrii::pyc"
+  - pyc 의미: 리포지토리의 이름인 "cpp_pythonic"를 적절히 축약하여 조합한 단어.
 
 ## 코딩 스타일
 
