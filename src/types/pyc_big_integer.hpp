@@ -45,9 +45,14 @@ namespace com::cafrii::pyc {
     - https://beeslog.tistory.com/214
     - https://stackoverflow.com/a/53310256  InfInt class
     - https://codeforces.com/blog/entry/16380  BigInt class
+
+    in github, following repo received stars.
+    - https://github.com/faheel/BigInt
 */
 
 /*
+    Big Integer manipulation class
+    which support arbitrary precision integer numbers.
 
 */
 class BigInt
@@ -55,7 +60,7 @@ class BigInt
     // class 내부에 공통적으로 영향을 끼치는 using namespace 대신, 꼭 필요한 일부 타입만 차용한다.
     using Digit = uint8_t;
         // actually, any type T where digit 0..9 can be stored is allowed.
-    using dvector = std::vector<Digit>;
+    using DgtVec = std::vector<Digit>;
 
     using string = std::string;
     using cstring = const std::string &;
@@ -66,11 +71,11 @@ protected:
         big number is stored reverse order.
         for example, integer 2025 is stored as { 5, 2, 0, 2 }.
     */
-    dvector m_nums;
+    DgtVec m_digits;
 
-    // internall accessor. it do not check boundness!
-    Digit& operator[](int k) { return m_nums[k]; }
-    const Digit& operator[](int k) const { return m_nums[k]; }
+    // internall accessor. it does not check boundness!
+    Digit& operator[](int k) { return m_digits[k]; }
+    const Digit& operator[](int k) const { return m_digits[k]; }
 
 public:
     // debugging
@@ -78,7 +83,7 @@ public:
     string Describe() const;
 
 public:
-    static const int kDefWidth = 8;
+    // static const int kDefWidth = 8; // not used.
 
 public:
     // ctor
@@ -88,16 +93,16 @@ public:
     BigInt(int nr): BigInt((unsigned long long)nr) {}
     // BigInt(0) will be treated as integer 0, not 'NULL'.
 
-    BigInt(const string& s);
+    BigInt(cstring s);
     BigInt(const char* cs): BigInt(string(cs)) {}
 
     // dtor
     virtual ~BigInt() {}
 
     // copy ctor
-    BigInt(const BigInt& other): m_nums(other.m_nums) {}
+    BigInt(const BigInt& other): m_digits(other.m_digits) {}
     // move ctor
-    BigInt(BigInt&& other): m_nums(std::move(other.m_nums)) {}
+    BigInt(BigInt&& other): m_digits(std::move(other.m_digits)) {}
 
 public:
     // assign, move
@@ -136,6 +141,7 @@ public:
     friend BigInt operator-(BigInt lhs, const BigInt& rhs) {
         lhs -= rhs; return lhs;
     }
+public:
     // in-place add/subtract
     BigInt& Add_(const BigInt& rhs);
     BigInt& Subtract_(const BigInt& rhs);
@@ -226,9 +232,9 @@ namespace com::cafrii::pyc {
 */
 BigInt::BigInt(unsigned long long num)
 {
-    m_nums.reserve(20);
+    m_digits.reserve(20);
     do {
-        m_nums.push_back(num % 10);
+        m_digits.push_back(num % 10);
         num /= 10;
     } while (num);
 }
@@ -262,8 +268,8 @@ BigInt::BigInt(const string& sn)
 bool BigInt::IsZero() const
 {
     return
-        m_nums.empty() ||
-        (m_nums.size() == 1 && m_nums[0] == 0) ||
+        m_digits.empty() ||
+        (m_digits.size() == 1 && m_digits[0] == 0) ||
         false;
 }
 
@@ -274,7 +280,7 @@ bool BigInt::IsZero() const
 */
 int BigInt::Capacity() const
 {
-    return (int)m_nums.size();
+    return (int)m_digits.size();
 }
 
 /*
@@ -288,8 +294,8 @@ int BigInt::Capacity() const
 int BigInt::Width() const
 {
     // 끝자리 0을 제외한, 실제로 0아닌 숫자의 길이.
-    int k = m_nums.size()-1;
-    for (; k>=0 && !m_nums[k]; k--) (void)0;
+    int k = m_digits.size()-1;
+    for (; k>=0 && !m_digits[k]; k--) (void)0;
     // k는 0아닌 숫자를 포함하는 마지막 요소 인덱스. 0아닌 숫자가 없으면 -1.
     if (k < 0) k = 0;
     return k+1;
@@ -314,7 +320,7 @@ BigInt& BigInt::operator=(const BigInt& other)
         return *this;
 
     // resource reuse will be considered in vector class level.
-    m_nums = other.m_nums;
+    m_digits = other.m_digits;
     return *this;
 }
 
@@ -329,7 +335,7 @@ BigInt& BigInt::operator=(BigInt&& other) noexcept
     if (this == &other)
         return *this; // delete[]/size=0 would also be ok
 
-    m_nums = std::move(other.m_nums);
+    m_digits = std::move(other.m_digits);
     return *this;
 }
 
@@ -386,17 +392,17 @@ BigInt& BigInt::Add_(const BigInt& rhs)
 
     int carry = 0;
     for (int k=0; k<len; k++) {
-        int operand = k < len2 ? rhs.m_nums[k] : 0;
-        m_nums[k] += (operand + carry);
-        if (m_nums[k] < 10)
+        int operand = k < len2 ? rhs.m_digits[k] : 0;
+        m_digits[k] += (operand + carry);
+        if (m_digits[k] < 10)
             carry = 0;
         else {
-            m_nums[k] = m_nums[k] % 10;
+            m_digits[k] = m_digits[k] % 10;
             carry = 1;
         }
     }
     if (carry) {
-        m_nums[len] = 1;
+        m_digits[len] = 1;
     }
     return *this;
 
@@ -419,14 +425,14 @@ BigInt& BigInt::Subtract_(const BigInt& rhs)
 
     int val, carry = 0;
     for (int k=0; k<len; k++) {
-        int operand = k < len2 ? rhs.m_nums[k] : 0;
-        val = m_nums[k] - operand + carry;
+        int operand = k < len2 ? rhs.m_digits[k] : 0;
+        val = m_digits[k] - operand + carry;
         if (val >= 0) {
-            m_nums[k] = val;
+            m_digits[k] = val;
             carry = 0;
         }
         else {
-            m_nums[k] = val + 10;
+            m_digits[k] = val + 10;
             carry = -1;
         }
     }
@@ -448,8 +454,8 @@ bool BigInt::Less(const BigInt& rhs) const
     else if (width1 > width2)
         return false;
 
-    auto &v1 = m_nums;
-    auto &v2 = rhs.m_nums;
+    auto &v1 = m_digits;
+    auto &v2 = rhs.m_digits;
 
     // lexicographical_compare returns true
     // if the first range is lexicographically less than the second.
@@ -466,12 +472,12 @@ bool BigInt::Equal(const BigInt& rhs) const
         return false;
 
     // for (int k=0; k<width1; k++) {
-    //     if (m_nums[k] != rhs.m_nums[k])
+    //     if (m_digits[k] != rhs.m_digits[k])
     //         return false;
     // }
     // return true;
 
-    return std::memcmp(&m_nums[0], &rhs.m_nums[0], width1) == 0;
+    return std::memcmp(&m_digits[0], &rhs.m_digits[0], width1) == 0;
 }
 
 //-------------------------------------
@@ -489,7 +495,7 @@ bool BigInt::Equal(const BigInt& rhs) const
 void BigInt::Extend_(int capacity)
 {
     if (Capacity() < capacity) {
-        m_nums.resize(capacity, 0);
+        m_digits.resize(capacity, 0);
     }
 }
 
@@ -499,7 +505,7 @@ void BigInt::Extend_(int capacity)
 */
 BigInt& BigInt::Normalize_()
 {
-    m_nums.resize(Width());
+    m_digits.resize(Width());
     return *this;
 }
 
@@ -514,9 +520,9 @@ std::string BigInt::ToStr(cstring opts) const
 {
     int w = Width();
     std::vector<char> buf(w);
-    auto& v = m_nums;
+    auto& v = m_digits;
     for (int k=0; k<w; k++) {
-        buf[k] = m_nums[w-k-1] + '0';
+        buf[k] = m_digits[w-k-1] + '0';
     }
     return &buf[0];
 }
