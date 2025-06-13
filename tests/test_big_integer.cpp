@@ -76,6 +76,24 @@ int test_bigint(int argc, char **argv)
     ASSERT(!BigInt(123).IsZero(), "not zero");
     ASSERT(BigInt(123).Width() == 3, "width");
 
+    {
+        BigInt bi_nz{"-0"};
+        printf("%s\n", bi_nz.Describe().c_str());
+
+        ASSERT(bi_nz.IsZero(), "zero");
+        ASSERT(!bi_nz.IsNegative(), "negative"); // -0 is not negative!
+        ASSERT(bi_nz == BigInt(0), "zero");
+        ASSERT(bi_nz == BigInt("0"), "zero");
+        printf("negative zero ok\n");
+
+        BigInt bi3{"-123"};
+        printf("%s\n", bi3.Describe().c_str());
+
+        ASSERT(!bi3.IsZero(), "zero");
+        ASSERT(bi3.IsNegative(), "negative"); // -0 is not negative!
+        ASSERT(bi3 == BigInt(-123), "-number");
+        printf("negative int ok\n");
+    }
 
     {
         BigInt bi = 123;

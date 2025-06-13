@@ -67,10 +67,20 @@ class BigInt
 
 protected:
     /*
-        each digit in number is stored as one element of vector array.
+        number is stored as sign-flag and magnitude.
+
+        each digit in magnitude is stored as one element of vector array.
         big number is stored reverse order.
         for example, integer 2025 is stored as { 5, 2, 0, 2 }.
+
+        unnecessary trailing 0 is not allowed.
+            ex: {3,2,1,0,0} is not allowed. it should be {3,2,1}.
+        in case of zero, magnitude contains one zero digit. {0}.
+
+        negative zero is not allowed. ex: {0} with m_sign=true is not allowed.
+
     */
+    bool m_sign = false;  // true if negative
     DgtVec m_digits;
 
     // internall accessor. it does not check boundness!
@@ -87,13 +97,12 @@ public:
 
 public:
     // ctor
-    BigInt(): BigInt(0ULL) {}
-
-    BigInt(unsigned long long nr);
-    BigInt(int nr): BigInt((unsigned long long)nr) {}
+    BigInt();
+    BigInt(long long nr);
+    BigInt(int nr): BigInt((long long)nr) {}
     // BigInt(0) will be treated as integer 0, not 'NULL'.
 
-    BigInt(cstring s);
+    BigInt(const string& s);
     BigInt(const char* cs): BigInt(string(cs)) {}
 
     // dtor
@@ -112,6 +121,7 @@ public:
 public:
     // representation
     bool IsZero() const;
+    bool IsNegative() const { return m_sign; }
     // returns actually allocated memory sizes
     int Capacity() const;
     // number of net digits.
@@ -225,37 +235,65 @@ namespace com::cafrii::pyc {
 // ctor/dtor
 
 /*
+    default ctor
+*/
+BigInt::BigInt()
+{
+    m_digits = {0};
+}
+
+/*
     number to big integer
 
     UINT64_MAX is 18446744073709551615.
     maximum 20 digits at most.
 */
-BigInt::BigInt(unsigned long long num)
+BigInt::BigInt(long long num)
 {
-    m_digits.reserve(20);
+    if (num < 0) {
+        m_sign = true;
+        num = -num;
+    }
+    m_digits.reserve(20); // note that it does not increase m_digits vector memory!
     do {
         m_digits.push_back(num % 10);
         num /= 10;
     } while (num);
+    // no need to normalize.
 }
 
 /*
     string to big integer
     accept string only until it is valid digit number.
+
+    initial + sign is allowed.
 */
-BigInt::BigInt(const string& sn)
+BigInt::BigInt(const string& sn): BigInt()
 {
+    bool bNegative = false;
+    auto beg = sn.begin();
+    if (beg != sn.end()) {
+        if (*beg == '-') {
+            bNegative = true;
+            beg++;
+        }
+        else if (*beg == '+') { // +는 선택 사항.
+            beg++;
+        }
+    }
     // find first non-digit character.
-    auto it = std::find_if(sn.begin(), sn.end(),
+    auto it = std::find_if(beg, sn.end(),
             [](char c){ return !InRange<char>(c, '0', '9'); });
-    if (it == sn.begin())
+    if (it == beg)
         return; // there is no valid digit in provided string.
-    auto len = (it - sn.begin());
+    auto len = (it - beg);
     Extend_(len);
     Digit* p = &(*this)[len-1];
-    for (auto it2=sn.begin(); it2!=it; it2++) {
+    for (auto it2=beg; it2!=it; it2++) {
         *p-- = (*it2) - '0';
     }
+    m_sign = bNegative;
+    Normalize_();
 }
 
 //-------------------------------------
@@ -290,15 +328,17 @@ int BigInt::Capacity() const
         Width("12340") == 5
         Width("000") == 1
     purely zero "0" will count as 1. ie, Width() always > 0.
+
+    끝자리 0을 제외한, 실제로 0아닌 숫자의 길이를 리턴한다.
+    Width() 리턴값은 항상 >= 1 이다.
 */
 int BigInt::Width() const
 {
-    // 끝자리 0을 제외한, 실제로 0아닌 숫자의 길이.
     int k = m_digits.size()-1;
     for (; k>=0 && !m_digits[k]; k--) (void)0;
     // k는 0아닌 숫자를 포함하는 마지막 요소 인덱스. 0아닌 숫자가 없으면 -1.
     if (k < 0) k = 0;
-    return k+1;
+    return k+1; // 인덱스를 길이로 변환.
 }
 
 
@@ -404,6 +444,7 @@ BigInt& BigInt::Add_(const BigInt& rhs)
     if (carry) {
         m_digits[len] = 1;
     }
+    Normalize_();
     return *this;
 
 } // Add_
@@ -506,6 +547,9 @@ void BigInt::Extend_(int capacity)
 BigInt& BigInt::Normalize_()
 {
     m_digits.resize(Width());
+
+    if (m_sign && m_digits.size() == 1 && m_digits[0] == 0)
+        m_sign = false;
     return *this;
 }
 
@@ -530,8 +574,14 @@ std::string BigInt::ToStr(cstring opts) const
 std::string BigInt::Describe() const
 {
     string res = ToStr();
-    res += " width:" + std::to_string(Width());
-    res += " capacity:" + std::to_string(Capacity());
+    res += ", width:" + std::to_string(Width());
+    res += ", capacity:" + std::to_string(Capacity());
+    res += ", ";
+    for (int k=0; k<(int)m_digits.size(); k++) {
+        res += (k>0?" ":"") + std::to_string(m_digits[k]);
+    }
+    if (m_sign)
+        res += ", negative";
     return res;
 }
 
