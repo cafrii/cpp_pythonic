@@ -45,3 +45,8 @@
 - 모든 연산 결과 후, normalize 단계를 반드시 거치도록 변경.
 - 덧셈, 뺄셈 연산 후 부호가 변경될 수 있음.
 - 숫자로 객체 생성 시 unsigned long long 대신 long long 타입만을 지원함.
+
+
+### TODO
+- formatted string conversion
+  - ex: string Format("%+-20s")

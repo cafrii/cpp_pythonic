@@ -45,6 +45,7 @@ namespace com::cafrii::pyc {
     - https://beeslog.tistory.com/214
     - https://stackoverflow.com/a/53310256  InfInt class
     - https://codeforces.com/blog/entry/16380  BigInt class
+    - https://www.geeksforgeeks.org/bigint-big-integers-in-c-with-example/
 
     in github, following repo received stars.
     - https://github.com/faheel/BigInt
@@ -109,9 +110,9 @@ public:
     virtual ~BigInt() {}
 
     // copy ctor
-    BigInt(const BigInt& other): m_digits(other.m_digits) {}
+    BigInt(const BigInt& other);
     // move ctor
-    BigInt(BigInt&& other): m_digits(std::move(other.m_digits)) {}
+    BigInt(BigInt&& other);
 
 public:
     // assign, move
@@ -122,12 +123,30 @@ public:
     // representation
     bool IsZero() const;
     bool IsNegative() const { return m_sign; }
+
     // returns actually allocated memory sizes
     int Capacity() const;
+
     // number of net digits.
-    int Width() const;
+    int Width() const { return Width(m_digits); }
+    static int Width(const DgtVec& digits);
 
+    // return cloned-copy
+    BigInt Clone() const { return *this; }
 
+    BigInt&& Move() { return std::move(*this); }
+
+public:
+    // unary arithmetic
+    BigInt operator+() const { return *this; };
+    BigInt operator-() const { return Clone().Inv_(); };
+
+    BigInt Abs() const;
+
+protected:
+    // in-place inversed sign operation
+    BigInt& Inv_();
+    BigInt& Sign_(bool bSign);
 
 public:
     // pre/postfix increment/decrement
@@ -140,17 +159,21 @@ public:
 public:
     // binary arithmetic operator
     BigInt& operator+=(const BigInt& rhs) {
-        Add_(rhs); return *this;
+        return Add_(rhs);
     }
     friend BigInt operator+(BigInt lhs, const BigInt& rhs) {
         lhs += rhs; return lhs;
     }
     BigInt& operator-=(const BigInt& rhs) {
-        Subtract_(rhs); return *this;
+        return Subtract_(rhs);
     }
     friend BigInt operator-(BigInt lhs, const BigInt& rhs) {
         lhs -= rhs; return lhs;
     }
+protected:
+    BigInt& AddMag_(const DgtVec& rhs, bool bInvSign=false, bool bNormalize=true);
+    BigInt& SubtractMag_(const DgtVec& rhs,  bool bInvSign=false, bool bNormalize=true);
+
 public:
     // in-place add/subtract
     BigInt& Add_(const BigInt& rhs);
@@ -161,6 +184,11 @@ public:
     bool Less(const BigInt& rhs) const;
     bool Equal(const BigInt& rhs) const;
     // other binary comparison operators are at outside of this class.
+
+protected:
+    // compare magnitude only
+    bool LessMag(const DgtVec& rhs) const;
+    bool EqualMag(const DgtVec& rhs) const;
 
 public:
     // conversion
@@ -237,10 +265,23 @@ namespace com::cafrii::pyc {
 /*
     default ctor
 */
-BigInt::BigInt()
+BigInt::BigInt():
+    m_sign(false), m_digits({0})
 {
-    m_digits = {0};
 }
+
+/*
+    copy/move ctor
+*/
+BigInt::BigInt(const BigInt& other):
+    m_sign(other.m_sign), m_digits(other.m_digits)
+{
+}
+BigInt::BigInt(BigInt&& other):
+    m_sign(other.m_sign), m_digits(std::move(other.m_digits))
+{
+}
+
 
 /*
     number to big integer
@@ -306,7 +347,7 @@ BigInt::BigInt(const string& sn): BigInt()
 bool BigInt::IsZero() const
 {
     return
-        m_digits.empty() ||
+        m_digits.empty() || // <- actually this is illegal state.
         (m_digits.size() == 1 && m_digits[0] == 0) ||
         false;
 }
@@ -329,16 +370,20 @@ int BigInt::Capacity() const
         Width("000") == 1
     purely zero "0" will count as 1. ie, Width() always > 0.
 
-    끝자리 0을 제외한, 실제로 0아닌 숫자의 길이를 리턴한다.
+    부호는 제외하고, 절대값 숫자의 표현 크기를 계산한다.
+    뒤집혀 저장된 상태에서, 끝자리 0을 제외한 실제로 0아닌 숫자의 길이를 리턴한다.
     Width() 리턴값은 항상 >= 1 이다.
 */
-int BigInt::Width() const
+// static
+int BigInt::Width(const DgtVec& digits)
 {
-    int k = m_digits.size()-1;
-    for (; k>=0 && !m_digits[k]; k--) (void)0;
+    int k = digits.size()-1;
+    for (; k>=0 && !digits[k]; k--) (void)0;
+    // k is the last index which is trailing non-zero.
+    // if there are no non-zero digit, it will be -1.
     // k는 0아닌 숫자를 포함하는 마지막 요소 인덱스. 0아닌 숫자가 없으면 -1.
     if (k < 0) k = 0;
-    return k+1; // 인덱스를 길이로 변환.
+    return k+1; // convert index to length
 }
 
 
@@ -361,6 +406,7 @@ BigInt& BigInt::operator=(const BigInt& other)
 
     // resource reuse will be considered in vector class level.
     m_digits = other.m_digits;
+    m_sign = other.m_sign;
     return *this;
 }
 
@@ -376,8 +422,41 @@ BigInt& BigInt::operator=(BigInt&& other) noexcept
         return *this; // delete[]/size=0 would also be ok
 
     m_digits = std::move(other.m_digits);
+    m_sign = other.m_sign;
     return *this;
 }
+
+
+//-------------------------------------
+// unary arithmetic
+
+/*
+    return absolute value as BigInt instance.
+    it always return cloned.
+*/
+BigInt BigInt::Abs() const
+{
+    return Clone().Sign_(false);
+}
+
+/*
+    make inverse (toggle sign flag), in-place.
+*/
+BigInt& BigInt::Inv_()
+{
+    if (IsZero()) return *this;
+    m_sign = !m_sign;
+    return *this;
+}
+/*
+    set sign flag, in-place.
+*/
+BigInt& BigInt::Sign_(bool bSign)
+{
+    m_sign = bSign;
+    return *this;
+}
+
 
 
 //-------------------------------------
@@ -415,24 +494,25 @@ BigInt BigInt::operator--(int)
 /*
     binary arithmetic operators
 
-    아래와 같이 복합 대입 연산자를 먼저 구현하는 것이 일반적이다.
-    see Binary arithmetic operators, in https://en.cppreference.com/w/cpp/language/operators.html .
-
+    see Binary arithmetic operators, in https://en.cppreference.com/w/cpp/language/operators.html
 */
 
 /*
-    in-place add operation.
+    add magnitude part.
+    *this will be modified. (in-place op.)
+
+    result is returned after normalization (can be optionally disabled).
 */
-BigInt& BigInt::Add_(const BigInt& rhs)
+BigInt& BigInt::AddMag_(const DgtVec& digits, bool bInvSign, bool bNormalize)
 {
-    int len1 = Width();
-    int len2 = rhs.Width();
-    int len = std::max(len1, len2);
+    // assume digits digit vector is normalized.
+    int len2 = (int)digits.size();
+    int len = std::max((int)m_digits.size(), len2);
     this->Extend_(len + 1);
 
     int carry = 0;
     for (int k=0; k<len; k++) {
-        int operand = k < len2 ? rhs.m_digits[k] : 0;
+        int operand = k < len2 ? digits[k] : 0;
         m_digits[k] += (operand + carry);
         if (m_digits[k] < 10)
             carry = 0;
@@ -444,29 +524,91 @@ BigInt& BigInt::Add_(const BigInt& rhs)
     if (carry) {
         m_digits[len] = 1;
     }
-    Normalize_();
+    if (bInvSign) Inv_();
+    if (bNormalize) Normalize_();
     return *this;
+} // AddMag_
 
+/*
+    in-place add operation.
+    it will be normalized after operation.
+*/
+BigInt& BigInt::Add_(const BigInt& rhs)
+{
+#if 0
+    if (!m_sign && rhs.m_sign) { // positive + negative
+        // (NOT OPTIMUM!)
+        //    return Subtract_(-rhs);
+        //
+        // if use just use Subtract_(), rhs is cloned twice!!
+        //   ex: 3 + (-5) = 3 - cloned(5) = clone(clone(5)) - 3
+        // so, SubtractMag_ is preferred after checking.
+        //
+        if (LessMag(rhs.m_digits)) {
+            // ex: 3 + (-5) = cloned(-5) - 3 = -(cloned(5) - 3)
+            auto res = rhs; // copy
+            *this = res.SubtractMag_(m_digits, false).Move();
+            return *this;
+        }
+        else {
+            // ex: 5 + (-3) = 5 - 3
+            return SubtractMag_(rhs.m_digits, false);
+        }
+    }
+    if (m_sign && !rhs.m_sign) { // negative + positive
+        // return Inv_().Subtract_(rhs).Inv_();
+        if (LessMag(rhs.m_digits)) {
+            // ex: -3 + 5 => -(cloned(5) - 3)
+            auto res = rhs; // copy
+            *this = res.SubtractMag_(m_digits, false).Move();
+            return *this;
+        }
+        else {
+            // ex: -5 + 3 => -(5 - 3)
+            return SubtractMag_(rhs.m_digits, false);
+        }
+    }
+    // two signs are equal.
+    return AddMag_(rhs.m_digits, false); // keeping sign flag
+
+#else
+    if (m_sign == rhs.m_sign) { // same sign
+        return AddMag_(rhs.m_digits);
+    }
+    // different sign
+    if (LessMag(rhs.m_digits)) { // rhs has bigger magnitude
+        // -11 + 222
+        auto bigger = rhs; // copy
+        printf("bigger %s\n", bigger.ToStr().c_str());
+        *this = bigger.SubtractMag_(m_digits).Move();
+        return *this;
+    }
+    else {
+        return SubtractMag_(rhs.m_digits, false);
+    }
+
+#endif
 } // Add_
 
 /*
-    in-place subtract operation.
+    in-place subtract magnitude-only operation.
+    warning:
+        it should be called only when
+        this magnitude is greater than or equal to others.
 */
-BigInt& BigInt::Subtract_(const BigInt& rhs)
+BigInt& BigInt::SubtractMag_(const DgtVec& digits, bool bInvSign, bool bNormalize)
 {
-    if (*this < rhs) { // underflow?
-        // do we support negative big number?
-        throw("underflow, not supported yet");
+    if (LessMag(digits)) {
+        throw("underflow!");
         return *this;
     }
-    int len1 = Width();
-    int len2 = rhs.Width();
-    int len = std::max(len1, len2);
+    int len2 = Width(digits);
+    int len = std::max(Width(), len2);
     this->Extend_(len + 1);
 
     int val, carry = 0;
     for (int k=0; k<len; k++) {
-        int operand = k < len2 ? rhs.m_digits[k] : 0;
+        int operand = k < len2 ? digits[k] : 0;
         val = m_digits[k] - operand + carry;
         if (val >= 0) {
             m_digits[k] = val;
@@ -478,25 +620,66 @@ BigInt& BigInt::Subtract_(const BigInt& rhs)
         }
     }
     // if (carry) ... // it should not happen.
+    if (bInvSign) Inv_();
+    if (bNormalize) Normalize_();
     return *this;
+} // SubtractMag_
 
+
+/*
+    in-place subtract operation.
+
+*/
+BigInt& BigInt::Subtract_(const BigInt& rhs)
+{
+    // different sign
+#if 0
+    if (!m_sign && rhs.m_sign) { // positive - negative
+        return AddMag_(rhs.m_digits, false);
+    }
+    else if (m_sign && !rhs.m_sign) { // negative - positive
+        return AddMag_(rhs.m_digits, false);
+    }
+#else
+    if (!m_sign == rhs.m_sign) { // different sign
+        // final sign always follows first operand (this).
+        return AddMag_(rhs.m_digits);
+    }
+#endif
+    // same sign
+    if (LessMag(rhs.m_digits)) {
+        auto bigger = rhs; // copy
+        *this = bigger.SubtractMag_(m_digits, true).Move(); // invert sign
+        return *this;
+    }
+    else {
+        return SubtractMag_(rhs.m_digits, false);
+    }
 } // Subtract_
+
 
 //-------------------------------------
 /*
     comparison operator
 */
-bool BigInt::Less(const BigInt& rhs) const
+
+/*
+    compare magnitude only between this->digits and rhs.
+    return true if this->digits are less than rhs.
+
+    assume both digitvec is normalized.
+*/
+bool BigInt::LessMag(const DgtVec& rhs) const
 {
     int width1 = Width();
-    int width2 = rhs.Width();
+    int width2 = Width(rhs);
     if (width1 < width2)
         return true;
     else if (width1 > width2)
         return false;
 
     auto &v1 = m_digits;
-    auto &v2 = rhs.m_digits;
+    auto &v2 = rhs;
 
     // lexicographical_compare returns true
     // if the first range is lexicographically less than the second.
@@ -505,21 +688,37 @@ bool BigInt::Less(const BigInt& rhs) const
         v2.rbegin(), v2.rend());
 }
 
-bool BigInt::Equal(const BigInt& rhs) const
+bool BigInt::EqualMag(const DgtVec& rhs) const
 {
     int width1 = Width();
-    int width2 = rhs.Width();
+    int width2 = Width(rhs);
     if (width1 != width2)
         return false;
 
-    // for (int k=0; k<width1; k++) {
-    //     if (m_digits[k] != rhs.m_digits[k])
-    //         return false;
-    // }
-    // return true;
-
-    return std::memcmp(&m_digits[0], &rhs.m_digits[0], width1) == 0;
+    return std::memcmp(&m_digits[0], &rhs[0], width1) == 0;
 }
+
+
+/*
+    if (*this < rhs) return true
+*/
+bool BigInt::Less(const BigInt& rhs) const
+{
+    if (!m_sign && !rhs.m_sign) // both positive
+        return LessMag(rhs.m_digits);
+    else if (m_sign && rhs.m_sign) // both negative
+        // ex: -5 <? -3  => 3 <? 5 => true
+        //     -4 <? -4  => 4 <? 4 => false
+        return rhs.LessMag(m_digits);
+    else // different sign
+        return m_sign;
+}
+
+bool BigInt::Equal(const BigInt& rhs) const
+{
+    return m_sign == rhs.m_sign && EqualMag(rhs.m_digits);
+}
+
 
 //-------------------------------------
 // conversion

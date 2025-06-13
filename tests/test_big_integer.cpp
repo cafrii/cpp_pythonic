@@ -139,6 +139,26 @@ int test_bigint(int argc, char **argv)
     ASSERT(BigInt(123)-- == 123, "post-decrement");
     printf("incr/decr ok\n");
 
+    ASSERT(BigInt(222) + BigInt(-22) == BigInt(200), "add neg");
+    ASSERT(BigInt(1) + BigInt(-222) == BigInt(-221), "add neg");
+    ASSERT(BigInt(-11) + BigInt(222) == BigInt(211), "add neg");
+    ASSERT(BigInt(-222) + BigInt(11) == BigInt(-211), "add neg");
+    printf("add negative ok\n");
+
+    ASSERT(BigInt(2222) - BigInt(-11) == BigInt(2233), "sub neg");
+    ASSERT(BigInt(22) - BigInt(-1111) == BigInt(1133), "sub neg");
+    ASSERT(BigInt(-111) - BigInt(22) == BigInt(-133), "sub neg");
+    ASSERT(BigInt(-11) - BigInt(222) == BigInt(-233), "sub neg");
+    printf("sub negative ok\n");
+
+
+    ASSERT(-BigInt(333) == BigInt(-333), "unary minus");
+    ASSERT(-BigInt(-22) == BigInt(22), "unary minus");
+    printf("unary minus ok\n");
+
+    ASSERT(BigInt(11).Abs() == 11, "abs");
+    ASSERT(BigInt(-333).Abs() == 333, "abs");
+    printf("abs ok\n");
 
     return 0;
 }
