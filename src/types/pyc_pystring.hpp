@@ -1,8 +1,8 @@
 /*
-    pyc_module_name.hpp
+    pyc_pystring.hpp
 
     pythonic cpp library
-    some class
+    string class
 
     Author: yhlee
     Copyright © 2025
@@ -18,17 +18,11 @@
 
 //============================================================================
 
-
 #include <string>
-
-
 
 
 //============================================================================
 // configs
-
-
-// #define PYCFG_USE_UTF8CPP
 
 
 
@@ -40,23 +34,13 @@ namespace com::cafrii::pyc {
 //============================================================================
 
 /*
-    최종적으로는 선언과 구현이 분리 되면 좋겠으나,
-    처음 시작할 때에는 간단하게 header-only로 시작하는 것이 좋을 수 있다.
+    at this time, our own string type is not prepared.
 
-    처음에 헤더 전용으로 구현이 된 클래스를 나중에 구현을 분리하고자하는 경우
-    아래의 템플릿 구조에 맞춰서 분리를 하면 된다.
-*/
-
-/*
+    use std::string instead.
 
 */
-class SomeClass
-{
-public:
-    SomeClass();
-    virtual ~SomeClass();
 
-}; // SomeClass
+using pystring = std::string;
 
 
 //============================================================================
@@ -68,16 +52,6 @@ public:
 
 namespace com::cafrii::pyc {
 //============================================================================
-
-
-SomeClass::SomeClass()
-{
-
-}
-SomeClass::~SomeClass()
-{
-
-}
 
 
 //============================================================================
