@@ -12,6 +12,7 @@
 
 #include "test_common.hpp"
 
+#include <map>
 #include <set>
 #include <unordered_set>
 
@@ -61,12 +62,17 @@ int test_tostring(int argc, char **argv)
         ASSERT(pyc::to_string(v2) == "['a', 'b', 'c']", "vector-string");
 
         vector<bool> v3 = {true, false};
-        // printf("%s\n", pyc::to_string(v3).c_str());
+        // printf("vector<bool>: %s\n", pyc::to_string(v3).c_str());
         ASSERT(pyc::to_string(v3) == "[true, false]", "vector-bool");
 
         vector<vector<int>> v4 = {{1,2,3,}, {4,5,6,},};
-        // printf("%s\n", pyc::to_string(v4).c_str());
+        // printf("2-d vector: %s\n", pyc::to_string(v4).c_str());
         ASSERT(pyc::to_string(v4) == "[[1, 2, 3], [4, 5, 6]]", "vector-vector");
+    }
+    {   // array
+        std::array<int, 3> a3 = {7, 8, 9, };
+        printf("array: %s\n", pyc::to_string(a3).c_str());
+        ASSERT(pyc::to_string(a3) == "[7, 8, 9]", "array");
     }
     {   // tuple / pair
         pair<int,int> p1 = {1, 2};
@@ -75,37 +81,44 @@ int test_tostring(int argc, char **argv)
         tuple<int,int,int> t1 = {1, 2, 3};
         ASSERT(pyc::to_string(t1) == "(1, 2, 3)", "tuple");
     }
-    {   // Pair를 담은 벡터
+    {   // vector of pair
         vector<pair<int, string>> vp = {{1, "one"}, {2, "two"}};
-        printf("%s\n", pyc::to_string(vp).c_str());
+        printf("vector<pair>: %s\n", pyc::to_string(vp).c_str());
         ASSERT(pyc::to_string(vp) == "[(1, 'one'), (2, 'two')]", "vector-of-pair");
     }
-    {   // 중첩된 튜플을 담은 벡터
+    {   // vector of tuples
         vector<tuple<int,int,string>> vt = {{1, 2, "apple"}, {3, 4, "banana"}};
-        printf("%s\n", pyc::to_string(vt).c_str());
+        printf("vector<tuple>: %s\n", pyc::to_string(vt).c_str());
         ASSERT(pyc::to_string(vt) == "[(1, 2, 'apple'), (3, 4, 'banana')]", "vector-of-tuple");
     }
-    {   // 셋
+    {   // set (ordered by key)
         set<int> s = {5, 2, 8, 1};
-        printf("%s\n", pyc::to_string(s).c_str());
-        ASSERT(pyc::to_string(s) == "[1, 2, 5, 8]", "set");
+        printf("set: %s\n", pyc::to_string(s).c_str());
+        ASSERT(pyc::to_string(s) == "{1, 2, 5, 8}", "set");
     }
-    {
+    {   // unordered set
         std::unordered_set<int> us{2, 7, 1, 8, 2, 8};
-
+        printf("unordered_set: %s\n", pyc::to_string(us).c_str());
+        // ASSERT(pyc::to_string(us) == "[1, 2, 5, 8]", "set");
+        // 순서는 미리 알 수 없다. 따라서 자동 검사가 어려움.
     }
     {   // 맵
         map<string, int> m = {{"a", 1}, {"b", 2}, {"c", 3}};
-        printf("%s\n", pyc::to_string(m).c_str());
+        printf("map: %s\n", pyc::to_string(m).c_str());
         ASSERT(pyc::to_string(m) == "{'a': 1, 'b': 2, 'c': 3}", "map");
     }
-    {    // 맵의 값으로 벡터가 들어간 복잡한 구조
+    {    // map with vector
         map<string, vector<int>> mv = {
             {"A", {1, 2, 3}},
             {"B", {4, 5}}
         };
-        printf("%s\n", pyc::to_string(mv).c_str());
+        printf("map2: %s\n", pyc::to_string(mv).c_str());
         ASSERT(pyc::to_string(mv) == "{'A': [1, 2, 3], 'B': [4, 5]}", "map-of-vector");
+    }
+    {   // vector of map
+        vector<map<int,string>> vm = {{{1,"one"},{2,"two"}}, {{10,"ten"}}};
+        printf("map of vector: %s\n", pyc::to_string(vm).c_str());
+        ASSERT(pyc::to_string(vm) == "[{1: 'one', 2: 'two'}, {10: 'ten'}]", "vector-of-map");
     }
     printf("done\n");
     return 0;

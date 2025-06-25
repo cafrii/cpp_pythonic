@@ -19,10 +19,6 @@
 //============================================================================
 
 
-#include <sstream>
-#include <tuple>
-#include <map>
-
 
 #include "pyc_pystring.hpp"
 #include "pyc_typetraits.hpp"
@@ -88,9 +84,24 @@ std::string to_string_impl(const T& val, std::false_type /* is_scalar */) {
 //----------------------------------------------------------------------------
 // forward decl.
 
-// container
+// sequence container
 template <typename T>
-std::enable_if_t<is_container_v<T> && !is_map_like_v<T>, std::string> to_string(const T& container);
+std::enable_if_t<is_sequence_like_v<T>, std::string>
+to_string(const T& container);
+
+// set
+template <typename T>
+std::enable_if_t<is_set_like_v<T>, std::string>
+to_string(const T& set);
+
+// map (associated container)
+template <typename T>
+std::enable_if_t<is_map_like_v<T>, std::string>
+to_string(const T& m);
+
+// tuple
+template <typename... Ts>
+std::string to_string(const std::tuple<Ts...>& t);
 
 // pair
 template <typename A, typename B>
@@ -98,12 +109,13 @@ std::string to_string(const std::pair<A, B>& p);
 
 // floating-point number
 template <typename T>
-std::enable_if_t<std::is_floating_point_v<T>, std::string> to_string(const T& val);
+std::enable_if_t<std::is_floating_point_v<T>, std::string>
+to_string(const T& val);
 
 // dispatcher
 template <typename T>
-// std::enable_if_t<!is_container_v<T>, std::string> to_string(const T& val);
-std::enable_if_t<!is_container_v<T> && !std::is_floating_point_v<T>, std::string> to_string(const T& val);
+std::enable_if_t<!is_container_v<T> && !std::is_floating_point_v<T>, std::string>
+to_string(const T& val);
 
 
 //----------------------------------------------------------------------------
@@ -132,15 +144,20 @@ std::string to_string(const std::pair<A, B>& p) {
 }
 
 //----------------------------------------------------------------------------
-// container
+// sequence container
 
 /*
-    vector, set
-    exclude map-like types.
+    vector, array, deque, list, ..
+    set 는 container-like (beginnable) 이지만
+    다른 것들과는 달리 [ ] 대신 { } 가 더 자연스럽다.
+
+    beginnable, but not map-like, set-like
+    => sequence-like
 */
 
 template <typename T>
-std::enable_if_t<is_container_v<T> && !is_map_like_v<T>, std::string>
+// std::enable_if_t<is_container_v<T> && !is_map_like_v<T>, std::string>
+std::enable_if_t<is_sequence_like_v<T>, std::string>
 to_string(const T& container) {
     std::stringstream ss;
     ss << "[";
@@ -149,6 +166,28 @@ to_string(const T& container) {
         ss << to_string(elem);
     }
     ss << "]";
+    return ss.str();
+}
+
+//----------------------------------------------------------------------------
+// set
+
+/*
+    set
+    beginnable, set-like
+    => sequence-like 를 사용하면 적절함.
+*/
+
+template <typename T>
+std::enable_if_t<is_set_like_v<T>, std::string>
+to_string(const T& set) {
+    std::stringstream ss;
+    ss << "{";
+    for (const auto& elem : set) {
+        if (&elem != &*set.begin()) ss << ", ";
+        ss << to_string(elem);
+    }
+    ss << "}";
     return ss.str();
 }
 
@@ -187,7 +226,7 @@ to_string(const T& val) {
 
 /*
     dispatcher
-    컨테이너 타입 등 위에서 별도로 overloading 한 타입은 제외
+    컨테이너 타입이 아닌 일반 타입.
 */
 template <typename T>
 std::enable_if_t<!is_container_v<T> && !std::is_floating_point_v<T>, std::string>

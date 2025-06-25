@@ -3,12 +3,23 @@
 */
 
 #include <type_traits>
+#include <vector>
+#include <map>
+#include <set>
+#include <unordered_map>
+#include <unordered_set>
+#include <array>
+#include <list>
+#include <deque>
+
+
 #include "test_common.hpp"
 #include "pyc_tostring.hpp"
 
 using namespace std;
 
 namespace pyc = com::cafrii::pyc;
+
 
 
 int test_meta()
@@ -19,6 +30,20 @@ int test_meta()
     static_assert(pyc::is_map_like_v<std::map<int, int>>, "std::map is map-like");
     static_assert(pyc::is_map_like_v<std::unordered_map<std::string, int>>, "unordered_map is map-like");
     static_assert(!pyc::is_map_like_v<std::vector<int>>, "vector is NOT map-like");
+
+
+    static_assert(pyc::is_map_like_v<std::map<int, int>>, "map");
+    static_assert(!pyc::is_map_like_v<std::vector<std::pair<int, int>>>, "vector<pair>");
+
+    static_assert(pyc::is_set_like_v<std::set<int>>, "set");
+    static_assert(pyc::is_set_like_v<std::unordered_multiset<std::string>>, "unordered_multiset");
+
+    static_assert(pyc::is_sequence_like_v<std::vector<int>>, "vector");
+    static_assert(pyc::is_sequence_like_v<std::array<double, 3>>, "array");
+    static_assert(!pyc::is_sequence_like_v<std::map<int, int>>, "map is not sequence");
+    static_assert(!pyc::is_sequence_like_v<std::set<int>>, "set is not sequence");
+
+
 
     return 0;
 }
