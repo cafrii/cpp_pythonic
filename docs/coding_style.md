@@ -31,6 +31,20 @@
 - 특정 상황에서 header-only 로 아주 일부 기능만 사용하고자 하는 경우도 고려할 수 있다.
 - 예: 다른 모든 기능은 다 필요 없고 BigInt 클래스만 사용하고자 하는 경우, 헤더 파일 하나만 포함시켜서 쓸 수 있도록 한다.
 
+## git history
+- 리팩토링 중 파일을 복사 할 때 많은 부분이 원본과 중복되어 history가 유지되는 것이 도움이 되는 경우 다음과 같은 트릭을 사용한다.
+```
+# how to copy file while keeping git history (copy from a.txt to b.txt)
+git checkout -b br-rename
+git mv a.txt b.txt
+git commit -m "rename a.txt to b.txt for copy"
+git switch main
+git merge --no-ff --no-commit br-rename
+git checkout HEAD -- a.txt
+git commit -m "restore from rename"
+git branch --delete br-rename
+```
+
 
 ## 코딩 스타일
 
