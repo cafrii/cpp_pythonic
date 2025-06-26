@@ -10,7 +10,8 @@
 - iterator, generator
 
 # 작업 진행 중
-- 범용 문자열 변환기
+- 범용 문자열 변환기 (또는 to_string 함수)
+- sum()
 
 
 # 완료된 작업
@@ -20,3 +21,6 @@
 - 숫자 및 문자열을 이용한 생성자
 - 몇몇 중요 수학 연산 (add, subtract)
 - ...
+
+## to_string(Any)
+

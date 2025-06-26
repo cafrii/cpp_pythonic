@@ -6,4 +6,4 @@ set (PYCP_SRCS
 )
 add_library(types STATIC ${PYCP_SRCS})
 
-target_include_directories(types PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(types PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_SOURCE_DIR})

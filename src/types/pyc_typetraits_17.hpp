@@ -86,6 +86,24 @@ template <typename T> constexpr bool has_mapped_type_v = has_mapped_type<T>::val
 
 
 //----------------------------------------------------------------------------
+// is_iterable<T>
+
+template <typename T, typename = void>
+struct is_iterable : std::false_type {};
+
+template <typename T>
+struct is_iterable<T,
+    std::void_t<
+        decltype(std::begin(std::declval<T&>())),
+        decltype(std::end(std::declval<T&>()))
+    >
+> : std::true_type {};
+
+template <typename T>
+constexpr bool is_iterable_v = is_iterable<T>::value;
+
+
+//----------------------------------------------------------------------------
 // is_container<T>
 
 /*
@@ -105,9 +123,17 @@ template <typename T> constexpr bool has_mapped_type_v = has_mapped_type<T>::val
 template <typename T, typename = void>
 struct is_container : std::false_type {};
 
+// template <typename T>
+// struct is_container<T,
+//     std::void_t<
+//         decltype(std::begin(std::declval<T&>())),
+//         decltype(std::end(std::declval<T&>()))
+//     >
+// > : std::bool_constant<!is_string_v<T>> {};
+
 template <typename T>
-struct is_container<T, std::void_t<decltype(std::begin(std::declval<T>()))>>
-    : std::bool_constant<!is_string_v<T>> {};
+struct is_container<T>
+    : std::bool_constant<is_iterable_v<T> && !is_string_v<T>> {};
 
 template <typename T>
 constexpr bool is_container_v = is_container<T>::value;
@@ -216,6 +242,26 @@ struct is_map_like<T, std::void_t<typename T::value_type>>
         is_container_v<T> &&
         is_pair_like_v<typename T::value_type>
     > {};
+
+#elif 0
+/*
+    value 타입이 pair 인지 체크하는 또 다른 방법.
+    이 역시, vector<pair> 구분 불가 문제로 대안 아님.
+*/
+template <typename T>
+struct is_map_like<T, std::void_t<typename T::value_type>> {
+private:
+    template <typename U>
+    static auto test(int) -> decltype(
+        std::declval<typename U::value_type>().first,
+        std::declval<typename U::value_type>().second,
+        std::true_type{}
+    );
+    template <typename>
+    static std::false_type test(...);
+public:
+    static constexpr bool value = decltype(test<T>(0))::value;
+};
 
 #else
 /*
