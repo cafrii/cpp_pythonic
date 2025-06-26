@@ -109,7 +109,8 @@ template <typename T>
 struct is_container<T, std::void_t<decltype(std::begin(std::declval<T>()))>>
     : std::bool_constant<!is_string_v<T>> {};
 
-template <typename T> constexpr bool is_container_v = is_container<T>::value;
+template <typename T>
+constexpr bool is_container_v = is_container<T>::value;
 
 
 //----------------------------------------------------------------------------
@@ -130,7 +131,8 @@ struct is_pair_like<T, std::void_t<
     decltype(std::declval<T>().second)
 >> : std::true_type {};
 
-template <typename T> constexpr bool is_pair_like_v = is_pair_like<T>::value;
+template <typename T>
+constexpr bool is_pair_like_v = is_pair_like<T>::value;
 
 
 //----------------------------------------------------------------------------
@@ -250,7 +252,8 @@ struct is_set_like<T, std::void_t<typename T::key_type>>
         !has_mapped_type_v<T>
     > {};
 
-template <typename T> constexpr bool is_set_like_v = is_set_like<T>::value;
+template <typename T>
+constexpr bool is_set_like_v = is_set_like<T>::value;
 
 
 //----------------------------------------------------------------------------
