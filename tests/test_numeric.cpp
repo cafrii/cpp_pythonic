@@ -59,7 +59,7 @@ int test_sum(int argc, char **argv)
         ASSERT(pyc::sum(vi, 0L) == 6000000000, "");
 
         vector<int> vi2 = { 2000000000, 2000000000, 2000000000, };
-        ASSERT(pyc::sum<long>(vi2) == 6000000000, "");
+        ASSERT(pyc::sum(vi2,0L) == 6000000000, "");
     }
 
     {   // literal

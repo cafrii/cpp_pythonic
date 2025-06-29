@@ -19,7 +19,6 @@
 //============================================================================
 
 
-#include "types/pyc_pystring.hpp"
 #include "types/pyc_typetraits.hpp"
 
 
@@ -42,14 +41,61 @@ namespace com::cafrii::pyc {
 
 
 //----------------------------------------------------------------------------
+// helper tools
+
+/*
+    요소 타입 추출 (map의 경우 key, 그 외는 value_type, tuple은 첫 번째 요소 타입)
+*/
+template <typename T, typename = void>
+struct sum_value_type {
+    using type = typename std::iterator_traits<decltype(std::begin(std::declval<T>()))>::value_type;
+};
+
+template <typename T>
+struct sum_value_type<T, std::void_t<typename T::key_type>> {
+    using type = typename T::key_type;
+};
+
+
+
+/*
+    sum 연산을 + 연산이 의미가 있는 산술 타입으로만 한정할 것인지는 선택의 문제임.
+*/
+template <typename T>
+constexpr bool is_summable = std::is_arithmetic_v<typename sum_value_type<T>::type>;
+
+
+
+//----------------------------------------------------------------------------
 /*
     sum()
     add all elements of continer.
+
+    RT를 따로 지정하지 않으면 유추된 기본 타입 사용
 */
 
-template <typename T, typename RT>
-RT sum(const T& container, RT initval) {
+template <typename T,
+    typename RT = typename sum_value_type<T>::type,
+    std::enable_if_t<
+        is_iterable_v<T> &&
+        is_summable<T>, int> = 0
+>
+RT sum(const T& container, RT initval = RT{}) {
     static_assert(is_iterable<T>::value, "sum() function requires an iterable type.");
+
+#if 0
+    static_assert(std::is_default_constructible_v<RT>,
+                  "sum(): Element type must be default constructible.");
+    static_assert(std::is_copy_constructible_v<RT>,
+                  "sum(): Element type must be copy constructible.");
+    static_assert(std::is_copy_assignable_v<RT>,
+                  "sum(): Element type must be copy assignable.");
+    static_assert(std::is_constructible_v<RT, int>,
+                  "sum(): Element type must be constructible from 0.");
+    static_assert(std::is_convertible_v<decltype(std::declval<RT>() + std::declval<RT>()), ElemT>,
+                  "sum(): Element type must support '+' operator.");
+#endif
+
 
     RT total = initval;
     if constexpr (is_map_like_v<T>) {
@@ -63,6 +109,21 @@ RT sum(const T& container, RT initval) {
 }
 
 //----------------------------------------------------------------------------
+
+/*
+    이 signature는 모호한 부분이 있으므로 삭제!
+
+    sum<long>(..) 는 long 이 container 타입이 아니므로
+    RT 타입일 거라고 유추할 수는 있지만
+    첫번째 템플릿 인자는 모든 경우에 컨테이너 T 타입,
+    또는 tuple 이나 pair 타입 등 덧셈의 대상이 되는 집합형 타입이
+    오는 것으로 확정하는 것이 모호성을 줄일 수 있다.
+
+    sum<long>(container) 대신에
+    sum(container, 0L) 과 같이 쓰는 것이 더 명확하다.
+*/
+
+#if 0
 /*
     example usage:
         sum<long>(v)
@@ -73,16 +134,23 @@ RT sum(const T& container) {
     // RT 의 기본값으로 초기화 한 후 계산.
     return sum(container, RT{});
 }
+#endif //
 
 
 //----------------------------------------------------------------------------
 /*
     sum()
     note: overflow may occur during sum operation.
+
+    앞서 정의된 하나의 sum() 함수로 통일되었음. 이 선언은 제거.
+        template <typename T, typename RT>
+        RT sum(const T& container, RT initval = RT{})
+
 */
+
+#if 0
 template <typename T>
-auto sum(const T& container)
-{
+auto sum(const T& container) {
     static_assert(is_iterable_v<T>, "sum(): Container must be iterable.");
 
 #if 0
@@ -126,6 +194,7 @@ auto sum(const T& container)
         return result;
     }
 }
+#endif // 0
 
 
 
