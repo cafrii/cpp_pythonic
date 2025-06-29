@@ -47,12 +47,11 @@ namespace com::cafrii::pyc {
     add all elements of continer.
 */
 
-template <typename T, typename ResultType>
-ResultType sum(const T& container, ResultType initval)
-{
+template <typename T, typename RT>
+RT sum(const T& container, RT initval) {
     static_assert(is_iterable<T>::value, "sum() function requires an iterable type.");
 
-    ResultType total = initval;
+    RT total = initval;
     if constexpr (is_map_like_v<T>) {
         for (const auto& pair : container)
             total += pair.first;
@@ -69,11 +68,10 @@ ResultType sum(const T& container, ResultType initval)
         sum<long>(v)
     container 의 타입은 deduct 되어 사용.
 */
-template <typename ResultType, typename T>
-ResultType sum(const T& container)
-{
-    // ResultType 의 기본값으로 초기화 한 후 계싼.
-    return sum(container, ResultType{});
+template <typename RT, typename T>
+RT sum(const T& container) {
+    // RT 의 기본값으로 초기화 한 후 계산.
+    return sum(container, RT{});
 }
 
 
