@@ -43,7 +43,7 @@ int test_meta()
     static_assert(!pyc::is_sequence_like_v<std::map<int, int>>, "map is not sequence");
     static_assert(!pyc::is_sequence_like_v<std::set<int>>, "set is not sequence");
 
-
+    static_assert(pyc::is_tuple_v<std::tuple<>>, "empty tuple is also tuple");
 
     return 0;
 }

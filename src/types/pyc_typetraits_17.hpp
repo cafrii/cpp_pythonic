@@ -102,6 +102,18 @@ struct is_iterable<T,
 template <typename T>
 constexpr bool is_iterable_v = is_iterable<T>::value;
 
+//----------------------------------------------------------------------------
+// is_tuple<T>
+
+template <typename T>
+struct is_tuple : std::false_type {};
+
+template <typename... Args>
+struct is_tuple<std::tuple<Args...>> : std::true_type {};
+
+template <typename T>
+constexpr bool is_tuple_v = is_tuple<T>::value;
+
 
 //----------------------------------------------------------------------------
 // is_container<T>
@@ -166,6 +178,9 @@ constexpr bool is_pair_like_v = is_pair_like<T>::value;
 
 /*
     T 가 std::tuple 처럼 get<0>, get<1> 을 지원하는지.
+    is_tuple_v<T> 는 정확히 tuple 타입인지를 검사
+    is_tuple_like_v<T> 는 tuple 처럼 접근되는 특성을 가지는지 검사.
+
     예시:
         std::tuple, std::array, std::pair
 

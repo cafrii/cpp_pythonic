@@ -28,7 +28,8 @@
 // configs
 
 
-// #define PYCFG_USE_UTF8CPP
+// if defined, sum<tuple>() is supported.
+#define PYCFG_SUM_TUPLE
 
 
 
@@ -56,6 +57,20 @@ struct sum_value_type<T, std::void_t<typename T::key_type>> {
     using type = typename T::key_type;
 };
 
+// 튜플: 첫 번째 요소의 타입을 sum 타입으로 사용
+template <typename... Args>
+struct sum_value_type<std::tuple<Args...>> {
+    using type = std::tuple_element_t<0, std::tuple<Args...>>;
+    // 주의: empty tuple 인 경우 컴파일 타임 에러 발생함!
+    // error: static assertion failed due to requirement '0UL < sizeof...(_Types)': tuple_element index out of range
+    // 그래서 따로 empty tuple 인 경우에 대한 특수화 추가.
+};
+template <>
+struct sum_value_type<std::tuple<>> {
+    using type = int;
+};
+
+
 
 
 /*
@@ -78,6 +93,7 @@ template <typename T,
     typename RT = typename sum_value_type<T>::type,
     std::enable_if_t<
         is_iterable_v<T> &&
+        !is_tuple<T>::value &&
         is_summable<T>, int> = 0
 >
 RT sum(const T& container, RT initval = RT{}) {
@@ -195,6 +211,83 @@ auto sum(const T& container) {
     }
 }
 #endif // 0
+
+
+
+//----------------------------------------------------------------------------
+/*
+    sum(tuple<..>)
+
+    tuple은 begin/end 사용이 안되는 타입이므로
+    sum()에 사용하기 위해서는 별도의 방법이 필요함.
+    tuple<..>의 모든 인자 타입이 동일한 산술 타입이어야만 sum 가능.
+*/
+
+#if defined(PYCFG_SUM_TUPLE)
+/*
+    tuple 요소가 모두 같은 타입인지 확인
+*/
+template <typename Tuple>
+constexpr bool are_tuple_elements_same = false;
+
+template <typename... Args>
+constexpr bool are_tuple_elements_same<std::tuple<Args...>> =
+    (std::is_same_v<Args, typename std::tuple_element_t<0, std::tuple<Args...>>> && ...);
+
+/*
+    tuple sum 을 위한 전용 sum helper
+*/
+template <typename RT, typename... Args, std::size_t... Is>
+RT sum_tuple(const std::tuple<Args...>& tup, RT init, std::index_sequence<Is...>) {
+    RT result = init;
+#if 1
+    // codes from grok3
+    ((result += std::get<Is>(tup)), ...); // 폴드 표현식으로 모든 요소 합산
+#else
+    // codes from gemini
+    // 튜플인 경우: std::apply와 fold expression을 사용하여 모든 요소를 더함
+    std::apply([&result](const auto&... args) {
+        // C++17 fold expression over comma operator
+        ((result += args), ...);
+    }, tup);
+#endif
+    return result;
+}
+
+/*
+    sum 함수 (tuple 타입 전용)
+
+    다음과 같이 overloading 단계에서 거르는 방법은 컴파일 에러 메시지가 덜 명확하기 때문에
+    내부에서 static_assert 로 처리하도록 하였음.
+
+    template <typename... Args,
+        typename RT = typename sum_value_type<std::tuple<Args...>>::type,
+        std::enable_if_t<is_tuple<std::tuple<Args...>>::value && (
+            sizeof...(Args) == 0 || (
+            is_summable<std::tuple<Args...>> &&
+            are_tuple_elements_same<std::tuple<Args...>>)
+        ), int> = 0>
+    RT sum(...) {...}
+
+*/
+template <typename... Args,
+    typename RT = typename sum_value_type<std::tuple<Args...>>::type>
+RT sum(const std::tuple<Args...>& tup, RT init = RT{}) {
+    using T = std::tuple<Args...>;
+    /*
+        empty tuple 지원을 거부하려면 다음과 같은 조건 추가.
+
+        if constexpr (sizeof...(Args) == 0)..
+        static_assert(std::tuple_size_v<T> > 0, "sum() on an empty tuple.");
+    */
+    static_assert(is_summable<T>, "tuple elements should be summable.");
+    static_assert(are_tuple_elements_same<T>, "tuple elements should be same type.");
+
+    return sum_tuple(tup, init, std::make_index_sequence<sizeof...(Args)>{});
+}
+
+
+#endif // PYCFG_SUM_TUPLE
 
 
 

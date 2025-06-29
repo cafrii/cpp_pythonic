@@ -73,6 +73,27 @@ int test_sum(int argc, char **argv)
         ASSERT(pyc::sum(arr) == 6, "");
     }
 
+    {   // std::tuple
+        tuple<long,long> tpl2 = {10, 100};
+        ASSERT(pyc::sum(tpl2) == 110, "");
+
+        tuple<int,int,int> tpi3 = {1, 2, 3};
+        ASSERT(pyc::sum(tpi3) == 6, "");
+
+        tuple<short,short> tps2 = {30000, 30000};
+        cout << pyc::sum(tps2, 0) << endl;
+        ASSERT(pyc::sum(tps2, 0) == 60000, "");
+
+        // compile error
+        // -> static_assert(are_tuple_elements_same<std::tuple<Args...>>, "tuple elements should be same type.");
+        // cout << pyc::sum(tuple<short,int>{1, 100}) << endl;
+
+        tuple<> tp0 = {};
+        ASSERT(pyc::sum(tp0) == 0, "empty tuple");
+
+        ASSERT(pyc::sum(tuple<>{}, 1U) == 1, "empty tuple with initval");
+
+    }
 
     printf("done\n");
     return 0;
